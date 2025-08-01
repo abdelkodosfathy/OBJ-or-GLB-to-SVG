@@ -12,6 +12,7 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { uniteSVGFromContent } from "./svgUtils";
 
 export default function App() {
+  const [exportMode, setExportMode] = useState("color");
   const [modelsList, setModelsList] = useState([]);
 
   // for outline
@@ -286,7 +287,7 @@ export default function App() {
   };
 
   const handleDownload = async (svgContent) => {
-    const simplifiedSvg = await uniteSVGFromContent(svgContent);
+    const simplifiedSvg = await uniteSVGFromContent(svgContent, exportMode);
     const blob = new Blob([simplifiedSvg], { type: "image/svg+xml" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -410,7 +411,9 @@ export default function App() {
 
           const polygon = `<polygon points="${points.join(
             " "
-          )}" fill="${hexColor}" stroke="black" stroke-width="0.25"/>`;
+          )}" fill="${hexColor}" stroke="black" stroke-width="0.25" data-model="${
+            child.name
+          }"/>`;
           svgPolygons.push(polygon);
         }
       }
@@ -454,85 +457,109 @@ export default function App() {
   };
 
   console.log(modelsList[0]);
-
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      <button
-        onClick={goToModelCamera}
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      {/* لوحة التحكم العلوية */}
+      <div
         style={{
           position: "absolute",
           top: 10,
-          left: 10,
+          right: 10,
           zIndex: 10,
-          padding: "10px 15px",
-        }}
-      >
-        👁 اذهب لمنظور الكاميرا داخل الملف
-      </button>
-      <button
-        onClick={resetCameraView}
-        style={{
-          position: "absolute",
-          top: 60,
-          left: 10,
-          zIndex: 10,
-          padding: "10px 15px",
-        }}
-      >
-        back to the center
-      </button>
-      <button
-        onClick={exportModelToColoredSVG}
-        style={{
-          position: "absolute",
-          top: 110,
-          left: 10,
-          zIndex: 10,
-          padding: "10px 15px",
-        }}
-      >
-        Export colored faces as a SVG
-      </button>
-      <ul
-        style={{
-          position: "absolute",
-          backgroundColor: "white",
-          top: 170,
-          left: 10,
-          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          backgroundColor: "#ffffffdd",
           padding: "12px",
-          borderRadius: "8px",
+          borderRadius: "10px",
+          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+          minWidth: "250px",
+        }}
+      >
+        <button onClick={goToModelCamera} style={buttonStyle}>
+          اذهب إلى منظور الكاميرا داخل الملف
+        </button>
+
+        <button onClick={resetCameraView} style={buttonStyle}>
+          الرجوع إلى مركز المشهد
+        </button>
+
+        <button onClick={exportModelToColoredSVG} style={buttonStyle}>
+          تصدير الأوجه الملونة كـ SVG
+        </button>
+
+        <label style={checkboxLabelStyle}>
+          <input
+            type="checkbox"
+            checked={exportMode === "model-color"}
+            onChange={(e) =>
+              setExportMode(e.target.checked ? "model-color" : "color")
+            }
+          />
+          <span>تصدير كل مجسم على حدة (حسب المجسم واللون)</span>
+        </label>
+      </div>
+
+      {/* قائمة العناصر في المشهد */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          right: 10,
+          zIndex: 10,
+          backgroundColor: "#ffffffdd",
+          padding: "12px",
+          borderRadius: "10px",
+          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
           maxHeight: "300px",
           overflowY: "auto",
-          minWidth: "200px",
+          minWidth: "250px",
         }}
       >
-        <li style={{ fontWeight: "bold", marginBottom: "8px", color: "#333" }}>
-           scene elements :
-        </li>
-        {modelsList[0]?.children?.map((e) => (
-          <li key={e.uuid} style={{ marginBottom: "6px" }}>
-            <button
-              style={{
-                backgroundColor: "#f3f4f6",
-                borderRadius: "6px",
-                padding: "6px 10px",
-                width: "100%",
-                textAlign: "left",
-                color: "#1e3a8a",
-                fontSize: "14px",
-                fontWeight: "500",
-                border: "none",
-                cursor: "pointer",
-              }}
-              onClick={() => selectObjectByName(e.name)}
-            >
-              {e.name || "بدون اسم"}
-            </button>
-          </li>
-        ))}
-      </ul>
+        <div
+          style={{
+            fontWeight: "bold",
+            marginBottom: "8px",
+            color: "#333",
+            fontSize: "16px",
+          textAlign:"right"
 
+          }}
+        >
+          العناصر داخل المشهد:
+        </div>
+        <ul style={{
+          listStyle:"none",
+        }}>
+          {modelsList[0]?.children?.map((e) => (
+            <li>
+              <button
+                key={e.uuid}
+                onClick={() => selectObjectByName(e.name)}
+                style={{
+                  maxWidth: "250px",
+
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: "6px",
+                  padding: "6px 10px",
+                  width: "100%",
+                  textAlign: "right",
+                  color: "#1e3a8a",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  border: "none",
+                  cursor: "pointer",
+                  marginBottom: "6px",
+                }}
+              >
+                {e.name || "بدون اسم"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ساحة العرض */}
       <div
         ref={containerRef}
         style={{ width: "100%", height: "100%" }}
@@ -543,3 +570,23 @@ export default function App() {
     </div>
   );
 }
+//  أسلوب موحد للأزرار
+const buttonStyle = {
+  padding: "10px",
+  backgroundColor: "#1e40af",
+  color: "white",
+  fontSize: "14px",
+  fontWeight: "500",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+};
+
+//  تنسيق للـ Checkbox
+const checkboxLabelStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  fontSize: "14px",
+  color: "#333",
+};
